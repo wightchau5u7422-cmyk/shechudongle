@@ -1,137 +1,187 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>蛇出洞了</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Snake Out of Hole</title>
     <style>
+        /* 全局样式重置 */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: Arial, sans-serif;
+            font-family: 'Arial', sans-serif;
         }
 
+        /* 页面基础样式 */
         body {
-            background: #1a1a1a;
+            background: #121212; /* 深色模式友好 */
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             flex-direction: column;
-            color: white;
+            color: #ffffff;
+            padding: 10px;
         }
 
-        .game-box {
+        /* 游戏容器 */
+        .game-container {
             text-align: center;
-            margin-top: 20px;
+            max-width: 400px;
+            width: 100%;
         }
 
+        /* 游戏标题 */
+        h1 {
+            color: #4CAF50;
+            margin-bottom: 15px;
+            font-size: 28px;
+            letter-spacing: 1px;
+        }
+
+        /* 游戏画布 */
         #gameCanvas {
             border: 3px solid #4CAF50;
-            background: #000;
+            background: #000000;
             display: block;
             margin: 0 auto;
+            width: 100%;
+            height: auto;
+            max-width: 400px;
         }
 
-        .info {
-            font-size: 18px;
-            margin: 10px 0;
+        /* 游戏状态统计栏 */
+        .game-stats {
             display: flex;
             justify-content: space-between;
-            width: 400px;
+            margin: 10px 0;
+            padding: 8px 10px;
+            background: #1e1e1e;
+            border-radius: 8px;
         }
 
-        .level-box {
-            color: #ffeb3b;
-            font-weight: bold;
+        .stat-item {
+            font-size: 16px;
+            font-weight: 600;
         }
 
-        .score-box {
-            color: #2196F3;
-            font-weight: bold;
-        }
+        .level { color: #FFD600; }  /* 关卡文字颜色-黄色 */
+        .score { color: #2196F3; }  /* 得分文字颜色-蓝色 */
+        .target { color: #F44336; } /* 目标文字颜色-红色 */
 
-        .target-box {
-            color: #f44336;
-            font-weight: bold;
-        }
-
-        .tips {
-            margin-top: 10px;
-            color: #ccc;
+        /* 游戏提示文字 */
+        .game-tips {
+            color: #cccccc;
             font-size: 14px;
+            margin: 10px 0;
         }
 
-        #restartBtn {
+        /* 加速功能提示 */
+        .speed-tip {
+            color: #FF9800;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        /* 开始/重启按钮 */
+        #startBtn {
             margin-top: 15px;
-            padding: 8px 20px;
+            padding: 10px 25px;
             background: #4CAF50;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 16px;
-            display: none;
+            font-weight: 600;
+            transition: background 0.2s ease;
+            width: 100%;
         }
 
-        #restartBtn:hover {
-            background: #45a049;
+        #startBtn:hover {
+            background: #388E3C;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 400px) {
+            h1 { font-size: 24px; }
+            .stat-item { font-size: 14px; }
+            .game-tips { font-size: 12px; }
+            .speed-tip { font-size: 10px; }
         }
     </style>
 </head>
 <body>
-    <div class="game-box">
-        <h1>🐍 蛇出洞了</h1>
-        <div class="info">
-            <div class="level-box">关卡: 1</div>
-            <div class="score-box">已吃: 0</div>
-            <div class="target-box">目标: 3</div>
+    <div class="game-container">
+        <h1>🐍 Snake Out of Hole</h1>
+        <!-- 游戏状态显示 -->
+        <div class="game-stats">
+            <div class="stat-item level">Level: 1</div>
+            <div class="stat-item score">Eaten: 0</div>
+            <div class="stat-item target">Target: 3</div>
         </div>
+        <!-- 游戏画布 -->
         <canvas id="gameCanvas" width="400" height="400"></canvas>
-        <div class="tips">方向键 ↑ ↓ ← → 控制蛇移动</div>
-        <button id="restartBtn">重新开始游戏</button>
+        <!-- 操作提示 -->
+        <div class="game-tips">Use Arrow Keys to control the snake</div>
+        <div class="speed-tip">Press Arrow Keys repeatedly to speed up the snake</div>
+        <!-- 开始/重启按钮 -->
+        <button id="startBtn">Start / Restart Game</button>
     </div>
 
     <script>
-        // ===================== 游戏基础配置 =====================
+        // ===================== 游戏配置常量 =====================
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const gridSize = 20;
-        const tileCount = canvas.width / gridSize;
+        const gridSize = 20;                // 网格大小
+        const tileCount = canvas.width / gridSize; // 网格数量
+        const baseSpeed = 180;              // 基础移动速度（ms/步）
+        const minSpeed = 80;                // 最低速度限制（防止过快）
+        const speedBoost = 20;              // 每次按键加速值（减20ms）
 
-        let snake = [
-            {x: 10, y: 10}
-        ];
-        let dx = 1;  // 默认向右移动
-        let dy = 0;
-        let food = {};
-        let score = 0;
-        let level = 1;
-        let target = 3;
-        let gameLoop;
-        let gameOver = false;
+        // ===================== 游戏全局变量 =====================
+        let snake;          // 蛇的身体数组
+        let dx, dy;         // 移动方向
+        let food;           // 食物（蛋）位置
+        let score;          // 当前得分
+        let level;          // 当前关卡
+        let target;         // 当前关卡目标分数
+        let gameLoop;       // 游戏循环定时器
+        let gameOver;       // 游戏结束标记
+        let currentSpeed;   // 当前基础速度
+        let tempSpeed;      // 临时加速速度
+        let keyPressed;     // 按键状态标记
 
-        // ===================== 关卡目标：3的N次方 =====================
-        function getTarget(level) {
+        // ===================== 游戏核心函数 =====================
+        /**
+         * 计算对应关卡的目标蛋数量（3的N次方）
+         * @param {number} level - 当前关卡
+         * @returns {number} 目标蛋数量
+         */
+        function getTargetEggs(level) {
             return Math.pow(3, level);
         }
 
-        // ===================== 刷新界面文字 =====================
-        function updateText() {
-            document.querySelector('.level-box').innerText = `关卡: ${level}`;
-            document.querySelector('.score-box').innerText = `已吃: ${score}`;
-            document.querySelector('.target-box').innerText = `目标: ${target}`;
+        /**
+         * 更新界面上的游戏状态（关卡、得分、目标）
+         */
+        function updateStats() {
+            document.querySelector('.level').textContent = `Level: ${level}`;
+            document.querySelector('.score').textContent = `Eaten: ${score}`;
+            document.querySelector('.target').textContent = `Target: ${target}`;
         }
 
-        // ===================== 随机生成蛋 =====================
+        /**
+         * 随机生成食物（蛋），避免生成在蛇身上
+         */
         function spawnFood() {
             food = {
                 x: Math.floor(Math.random() * tileCount),
                 y: Math.floor(Math.random() * tileCount)
             };
 
-            // 避免蛋生成在蛇身上
+            // 检查是否生成在蛇身上，若是则重新生成
             for (let segment of snake) {
                 if (segment.x === food.x && segment.y === food.y) {
                     spawnFood();
@@ -140,134 +190,231 @@
             }
         }
 
-        // ===================== 绘制游戏 =====================
-        function draw() {
-            // 背景
-            ctx.fillStyle = '#000';
+        /**
+         * 绘制游戏元素（蛇、食物、背景）
+         */
+        function drawGame() {
+            // 清空画布
+            ctx.fillStyle = '#000000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 画蛇
-            ctx.fillStyle = '#4CAF50';
-            for (let segment of snake) {
-                ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 2, gridSize - 2);
-            }
+            // 绘制蛇（区分蛇头和蛇身）
+            snake.forEach((segment, index) => {
+                if (index === 0) {
+                    // 蛇头：渐变+圆角
+                    const headGradient = ctx.createLinearGradient(
+                        segment.x * gridSize, segment.y * gridSize,
+                        (segment.x + 1) * gridSize, (segment.y + 1) * gridSize
+                    );
+                    headGradient.addColorStop(0, '#2E7D32');
+                    headGradient.addColorStop(1, '#81C784');
+                    
+                    ctx.fillStyle = headGradient;
+                    ctx.beginPath();
+                    ctx.roundRect(
+                        segment.x * gridSize + 1, 
+                        segment.y * gridSize + 1, 
+                        gridSize - 3, 
+                        gridSize - 3, 
+                        4
+                    );
+                    ctx.fill();
+                } else {
+                    // 蛇身：纯色矩形
+                    ctx.fillStyle = '#4CAF50';
+                    ctx.fillRect(
+                        segment.x * gridSize, 
+                        segment.y * gridSize, 
+                        gridSize - 2, 
+                        gridSize - 2
+                    );
+                }
+            });
 
-            // 画蛋
-            ctx.fillStyle = '#ffeb3b';
-            ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 2, gridSize - 2);
+            // 绘制食物（蛋）- 圆角矩形
+            ctx.fillStyle = '#FFD600';
+            ctx.beginPath();
+            ctx.roundRect(
+                food.x * gridSize + 1, 
+                food.y * gridSize + 1, 
+                gridSize - 3, 
+                gridSize - 3, 
+                3
+            );
+            ctx.fill();
         }
 
-        // ===================== 游戏主逻辑 =====================
-        function update() {
+        /**
+         * 更新游戏循环速度
+         */
+        function updateGameLoop() {
+            if (gameLoop) clearInterval(gameLoop);
+            gameLoop = setInterval(() => {
+                updateGame();
+                drawGame();
+            }, tempSpeed);
+        }
+
+        /**
+         * 更新游戏逻辑（移动、碰撞、吃蛋、关卡升级）
+         */
+        function updateGame() {
             if (gameOver) return;
 
-            // 蛇头移动
-            const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+            // 计算新蛇头位置
+            const head = { x: snake[0].x + dx, y: snake[0].y + dy };
 
-            // 撞墙死亡
+            // 撞墙判定
             if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
-                gameOverFunc();
+                endGame("Hit the wall! Game Over!");
                 return;
             }
 
-            // 撞自己死亡
-            for (let segment of snake) {
-                if (segment.x === head.x && segment.y === head.y) {
-                    gameOverFunc();
+            // 撞自己判定
+            for (let i = 1; i < snake.length; i++) {
+                if (head.x === snake[i].x && head.y === snake[i].y) {
+                    endGame("Hit yourself! Game Over!");
                     return;
                 }
             }
 
+            // 添加新蛇头
             snake.unshift(head);
 
-            // 吃到蛋
+            // 检查是否吃到食物
             if (head.x === food.x && head.y === food.y) {
                 score++;
-                updateText();
+                updateStats();
                 spawnFood();
 
-                // 判断过关
+                // 关卡升级检查
                 if (score >= target) {
                     if (level >= 10) {
-                        alert("🎉 恭喜你！通关全部 10 个关卡！");
-                        gameOverFunc();
+                        endGame("🎉 Congratulations! You beat all 10 levels!");
                         return;
                     }
-
+                    // 升级关卡
                     level++;
+                    currentSpeed = Math.max(minSpeed, baseSpeed - (level - 1) * 10);
+                    tempSpeed = currentSpeed;
                     score = 0;
-                    target = getTarget(level);
-                    updateText();
-                    alert(`✅ 恭喜！进入第 ${level} 关！`);
+                    target = getTargetEggs(level);
+                    updateStats();
+                    alert(`✅ Level Up! Now Level ${level} - Collect ${target} eggs`);
+                    updateGameLoop();
                 }
             } else {
+                // 没吃到食物则删除蛇尾
                 snake.pop();
             }
         }
 
-        // ===================== 游戏结束 =====================
-        function gameOverFunc() {
+        /**
+         * 游戏结束处理
+         * @param {string} message - 结束提示信息
+         */
+        function endGame(message) {
             gameOver = true;
             clearInterval(gameLoop);
-            document.getElementById('restartBtn').style.display = "block";
-            alert("💀 游戏结束！");
+            alert(message);
         }
 
         // ===================== 键盘控制 =====================
-        document.addEventListener('keydown', (e) => {
+        /**
+         * 按键按下处理（转向+加速）
+         * @param {KeyboardEvent} e - 键盘事件
+         */
+        function handleKeyDown(e) {
             if (gameOver) return;
+            keyPressed = true;
+            
+            // 临时提速（连续点击叠加，不低于最低速度）
+            tempSpeed = Math.max(minSpeed, tempSpeed - speedBoost);
+            updateGameLoop();
 
+            // 方向控制（禁止反向）
             switch (e.key) {
-                case 'ArrowLeft':
-                    if (dx !== 1) {
-                        dx = -1;
-                        dy = 0;
-                    }
-                    break;
-                case 'ArrowRight':
-                    if (dx !== -1) {
-                        dx = 1;
-                        dy = 0;
-                    }
-                    break;
-                case 'ArrowUp':
-                    if (dy !== 1) {
-                        dx = 0;
-                        dy = -1;
-                    }
-                    break;
-                case 'ArrowDown':
-                    if (dy !== -1) {
-                        dx = 0;
-                        dy = 1;
-                    }
-                    break;
+                case 'ArrowLeft': if (dx !== 1) { dx = -1; dy = 0; } break;
+                case 'ArrowRight': if (dx !== -1) { dx = 1; dy = 0; } break;
+                case 'ArrowUp': if (dy !== 1) { dx = 0; dy = -1; } break;
+                case 'ArrowDown': if (dy !== -1) { dx = 0; dy = 1; } break;
             }
-        });
+        }
 
-        // ===================== 重新开始 =====================
-        document.getElementById('restartBtn').addEventListener('click', () => {
-            window.location.reload();
-        });
-
-        // ===================== 启动游戏 =====================
-        function startGame() {
-            snake = [{x: 10, y: 10}];
-            dx = 0;
-            dy = 0;
-            score = 0;
-            level = 1;
-            target = getTarget(level);
-            gameOver = false;
-            updateText();
-            spawnFood();
-            gameLoop = setInterval(() => {
-                update();
-                draw();
+        /**
+         * 按键松开处理（恢复基础速度）
+         */
+        function handleKeyUp() {
+            if (gameOver) return;
+            keyPressed = false;
+            
+            // 延迟恢复（避免快速点击时频繁切换）
+            setTimeout(() => {
+                if (!keyPressed) {
+                    tempSpeed = currentSpeed;
+                    updateGameLoop();
+                }
             }, 100);
         }
 
-        startGame();
+        // 绑定键盘事件
+        document.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('keyup', handleKeyUp);
+
+        // ===================== 游戏初始化/重启 =====================
+        /**
+         * 初始化游戏（重置所有状态）
+         */
+        function initGame() {
+            // 清除旧的游戏循环
+            if (gameLoop) clearInterval(gameLoop);
+            
+            // 重置蛇（初始3段）
+            snake = [
+                { x: 10, y: 10 },  // 蛇头
+                { x: 9, y: 10 },   // 身体1
+                { x: 8, y: 10 }    // 身体2
+            ];
+            
+            // 重置游戏状态
+            dx = 1;                // 默认向右移动
+            dy = 0;
+            score = 0;
+            level = 1;
+            target = getTargetEggs(level);
+            gameOver = false;
+            currentSpeed = baseSpeed;
+            tempSpeed = baseSpeed;
+            keyPressed = false;
+
+            // 更新界面+生成食物+绘制初始画面
+            updateStats();
+            spawnFood();
+            drawGame();
+
+            // 启动游戏循环
+            updateGameLoop();
+        }
+
+        // ===================== 页面加载/按钮绑定 =====================
+        // 绑定开始/重启按钮点击事件
+        document.getElementById('startBtn').addEventListener('click', initGame);
+
+        // 页面加载完成后初始化显示（不自动启动游戏）
+        window.onload = () => {
+            // 初始显示3段蛇
+            snake = [
+                { x: 10, y: 10 },
+                { x: 9, y: 10 },
+                { x: 8, y: 10 }
+            ];
+            level = 1;
+            score = 0;
+            target = 3;
+            updateStats();
+            spawnFood();
+            drawGame();
+        };
     </script>
 </body>
 </html>
