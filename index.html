@@ -2,61 +2,60 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>Snake Out of Hole</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <title>Snake Out of Hole | TikTok</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
             font-family: 'Arial', sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            background: #121212;
+            background: #000000;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
+            width: 100vw;
+            height: 100vh;
             flex-direction: column;
             color: #ffffff;
-            padding: 10px;
+            overflow: hidden;
+            aspect-ratio: 9/16;
         }
 
         .game-container {
-            text-align: center;
-            max-width: 400px;
             width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 20px 15px;
+            max-width: 450px;
         }
 
         h1 {
             color: #4CAF50;
-            margin-bottom: 15px;
-            font-size: 28px;
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 10px;
             letter-spacing: 1px;
-        }
-
-        #gameCanvas {
-            border: 3px solid #4CAF50;
-            background: #000000;
-            display: block;
-            margin: 0 auto;
-            width: 100%;
-            height: auto;
-            max-width: 400px;
         }
 
         .game-stats {
             display: flex;
             justify-content: space-between;
-            margin: 10px 0;
+            margin-bottom: 10px;
             padding: 8px 10px;
             background: #1e1e1e;
             border-radius: 8px;
+            font-size: 14px;
         }
 
         .stat-item {
-            font-size: 16px;
             font-weight: 600;
         }
 
@@ -64,21 +63,68 @@
         .score { color: #2196F3; }
         .target { color: #F44336; }
 
+        #gameCanvas {
+            border: 2px solid #4CAF50;
+            background: #000000;
+            flex: 1;
+            width: 100%;
+            height: 0;
+            min-height: 0;
+        }
+
         .game-tips {
             color: #cccccc;
-            font-size: 14px;
+            font-size: 12px;
+            text-align: center;
             margin: 10px 0;
         }
 
-        .speed-tip {
-            color: #FF9800;
-            font-size: 12px;
-            margin-top: 5px;
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 15px auto;
+            width: 180px;
+        }
+
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #1e1e1e;
+            border: 2px solid #4CAF50;
+            color: #ffffff;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 5px;
+            transition: all 0.1s ease;
+            touch-action: manipulation;
+        }
+
+        .control-btn:active {
+            background: #4CAF50;
+            transform: scale(0.95);
+        }
+
+        .btn-up {
+            margin-bottom: 5px;
+        }
+
+        .btn-row {
+            display: flex;
+        }
+
+        .btn-left, .btn-right {
+            margin: 0 5px;
         }
 
         #startBtn {
-            margin-top: 15px;
-            padding: 10px 25px;
+            margin-top: 10px;
+            padding: 12px 0;
             background: #4CAF50;
             color: white;
             border: none;
@@ -86,19 +132,30 @@
             cursor: pointer;
             font-size: 16px;
             font-weight: 600;
-            transition: background 0.2s ease;
             width: 100%;
+            transition: background 0.2s ease;
         }
 
-        #startBtn:hover {
+        #startBtn:hover, #startBtn:active {
             background: #388E3C;
         }
 
-        @media (max-width: 400px) {
-            h1 { font-size: 24px; }
-            .stat-item { font-size: 14px; }
-            .game-tips { font-size: 12px; }
-            .speed-tip { font-size: 10px; }
+        .pc-tip {
+            display: none;
+        }
+
+        @media (max-width: 375px) {
+            .control-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 18px;
+            }
+            h1 {
+                font-size: 20px;
+            }
+            .game-stats {
+                font-size: 12px;
+            }
         }
     </style>
 </head>
@@ -110,39 +167,70 @@
             <div class="stat-item score">Eaten: 0</div>
             <div class="stat-item target">Target: 3</div>
         </div>
-        <canvas id="gameCanvas" width="400" height="400"></canvas>
-        <div class="game-tips">Use Arrow Keys to control the snake</div>
-        <div class="speed-tip">Press Arrow Keys repeatedly to speed up the snake</div>
+        <canvas id="gameCanvas"></canvas>
+        <div class="game-tips">Auto move | Tap to change direction | Hold to speed up</div>
+        <div class="controls">
+            <button class="control-btn btn-up" data-dir="up">↑</button>
+            <div class="btn-row">
+                <button class="control-btn btn-left" data-dir="left">←</button>
+                <button class="control-btn btn-down" data-dir="down">↓</button>
+                <button class="control-btn btn-right" data-dir="right">→</button>
+            </div>
+        </div>
         <button id="startBtn">Start / Restart Game</button>
     </div>
 
     <script>
-        // 配置常量
+        // ========== 基础配置（核心修改：降低初始速度） ==========
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const gridSize = 20;
-        const tileCount = canvas.width / gridSize;
-        const baseSpeed = 180;
-        const minSpeed = 80;
-        const speedBoost = 20;
+        
+        function resizeCanvas() {
+            const container = document.querySelector('.game-container');
+            const containerWidth = container.clientWidth;
+            canvas.width = containerWidth;
+            canvas.height = containerWidth * 1.777;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        const gridSize = Math.floor(canvas.width / 20);
+        const tileCount = Math.floor(canvas.width / gridSize);
+        
+        // 速度配置（关键修改：调大基础速度，降低加速幅度）
+        const BASE_SPEED = 400;     // 初始速度从200→400（变慢1倍）
+        const MIN_SPEED = 150;      // 最快速度从80→150（避免过快）
+        const SPEED_BOOST_STEP = 5; // 加速步长从10→5（加速更平缓）
+        const BOOST_DECAY_TIME = 100;// 加速间隔从50→100（加速更慢）
 
-        // 全局变量
-        let snake, dx, dy, food, score, level, target, gameLoop, gameOver;
-        let currentSpeed, tempSpeed, keyPressed;
+        // ========== 游戏状态 ==========
+        let snake = [];
+        let dx = 1, dy = 0;
+        let food = {};
+        let score = 0;
+        let level = 1;
+        let target = 3;
+        let gameOver = false;
+        let gameRunning = false;
+        
+        // 核心定时器（优化：增加定时器状态锁，避免叠加）
+        let autoMoveTimer = null;  
+        let speedBoostTimer = null;
+        let currentSpeed = BASE_SPEED;
+        let isKeyHeld = false;
+        let isDrawing = false; // 防止重复绘制导致卡顿
 
-        // 计算关卡目标蛋数
+        // ========== 工具函数 ==========
         function getTargetEggs(level) {
             return Math.pow(3, level);
         }
 
-        // 更新界面状态
         function updateStats() {
             document.querySelector('.level').textContent = `Level: ${level}`;
             document.querySelector('.score').textContent = `Eaten: ${score}`;
             document.querySelector('.target').textContent = `Target: ${target}`;
         }
 
-        // 生成食物（避蛇身）
         function spawnFood() {
             food = {
                 x: Math.floor(Math.random() * tileCount),
@@ -157,22 +245,28 @@
             }
         }
 
-        // 绘制游戏元素
+        // ========== 绘制函数（优化：防抖绘制，解决卡顿） ==========
         function drawGame() {
+            // 防抖：如果正在绘制，直接返回
+            if (isDrawing) return;
+            isDrawing = true;
+
+            // 优化绘制：先清屏，再绘制（减少Canvas重绘次数）
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = '#000000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 绘制蛇（头身区分）
+            // 绘制蛇（简化绘制逻辑，提升性能）
             snake.forEach((segment, index) => {
                 if (index === 0) {
-                    const headGradient = ctx.createLinearGradient(
+                    const gradient = ctx.createLinearGradient(
                         segment.x * gridSize, segment.y * gridSize,
                         (segment.x + 1) * gridSize, (segment.y + 1) * gridSize
                     );
-                    headGradient.addColorStop(0, '#2E7D32');
-                    headGradient.addColorStop(1, '#81C784');
+                    gradient.addColorStop(0, '#2E7D32');
+                    gradient.addColorStop(1, '#81C784');
                     
-                    ctx.fillStyle = headGradient;
+                    ctx.fillStyle = gradient;
                     ctx.beginPath();
                     ctx.roundRect(
                         segment.x * gridSize + 1, 
@@ -204,37 +298,41 @@
                 3
             );
             ctx.fill();
+
+            // 绘制完成，解锁
+            isDrawing = false;
         }
 
-        // 更新游戏循环速度
-        function updateGameLoop() {
-            if (gameLoop) clearInterval(gameLoop);
-            gameLoop = setInterval(() => {
-                updateGame();
-                drawGame();
-            }, tempSpeed);
-        }
-
-        // 游戏逻辑更新
-        function updateGame() {
-            if (gameOver) return;
+        // ========== 核心：移动一步的逻辑（优化：简化判定逻辑） ==========
+        function moveSnakeStep() {
+            if (gameOver || !gameRunning || isDrawing) return;
 
             const head = { x: snake[0].x + dx, y: snake[0].y + dy };
 
             // 撞墙判定
             if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
-                endGame("Hit the wall! Game Over!");
+                gameOver = true;
+                stopAllTimers();
+                alert("Hit the wall! Game Over!");
                 return;
             }
 
-            // 撞自身判定
+            // 撞自身判定（优化：提前终止循环）
+            let hitSelf = false;
             for (let i = 1; i < snake.length; i++) {
                 if (head.x === snake[i].x && head.y === snake[i].y) {
-                    endGame("Hit yourself! Game Over!");
-                    return;
+                    hitSelf = true;
+                    break;
                 }
             }
+            if (hitSelf) {
+                gameOver = true;
+                stopAllTimers();
+                alert("Hit yourself! Game Over!");
+                return;
+            }
 
+            // 添加新蛇头
             snake.unshift(head);
 
             // 吃蛋逻辑
@@ -243,75 +341,176 @@
                 updateStats();
                 spawnFood();
 
-                // 关卡升级
                 if (score >= target) {
                     if (level >= 10) {
-                        endGame("🎉 Congratulations! You beat all 10 levels!");
+                        gameOver = true;
+                        stopAllTimers();
+                        alert("🎉 Congratulations! You beat all 10 levels!");
                         return;
                     }
+                    
                     level++;
-                    currentSpeed = Math.max(minSpeed, baseSpeed - (level - 1) * 10);
-                    tempSpeed = currentSpeed;
+                    // 关卡升级后速度小幅提升（但仍保持平缓）
+                    currentSpeed = Math.max(MIN_SPEED, BASE_SPEED - (level - 1) * 10);
                     score = 0;
                     target = getTargetEggs(level);
                     updateStats();
                     alert(`✅ Level Up! Now Level ${level} - Collect ${target} eggs`);
-                    updateGameLoop();
+                    restartAutoMoveTimer();
                 }
             } else {
                 snake.pop();
             }
+
+            // 异步绘制，避免阻塞
+            requestAnimationFrame(drawGame);
         }
 
-        // 游戏结束
-        function endGame(message) {
-            gameOver = true;
-            clearInterval(gameLoop);
-            alert(message);
+        // ========== 定时器控制（优化：增加防叠加逻辑） ==========
+        function startAutoMoveTimer() {
+            // 防止重复创建定时器导致卡顿
+            if (autoMoveTimer) return;
+            autoMoveTimer = setInterval(() => {
+                moveSnakeStep();
+            }, currentSpeed);
         }
 
-        // 按键按下（转向+加速）
-        function handleKeyDown(e) {
-            if (gameOver) return;
-            keyPressed = true;
-            
-            tempSpeed = Math.max(minSpeed, tempSpeed - speedBoost);
-            updateGameLoop();
-
-            switch (e.key) {
-                case 'ArrowLeft': if (dx !== 1) { dx = -1; dy = 0; } break;
-                case 'ArrowRight': if (dx !== -1) { dx = 1; dy = 0; } break;
-                case 'ArrowUp': if (dy !== 1) { dx = 0; dy = -1; } break;
-                case 'ArrowDown': if (dy !== -1) { dx = 0; dy = 1; } break;
+        function restartAutoMoveTimer() {
+            stopAutoMoveTimer();
+            if (gameRunning && !gameOver) {
+                startAutoMoveTimer();
             }
         }
 
-        // 按键松开（恢复速度）
-        function handleKeyUp() {
-            if (gameOver) return;
-            keyPressed = false;
-            
-            setTimeout(() => {
-                if (!keyPressed) {
-                    tempSpeed = currentSpeed;
-                    updateGameLoop();
-                }
-            }, 100);
+        function stopAutoMoveTimer() {
+            if (autoMoveTimer) {
+                clearInterval(autoMoveTimer);
+                autoMoveTimer = null;
+            }
         }
 
-        // 绑定键盘事件
-        document.addEventListener('keydown', handleKeyDown);
-        document.addEventListener('keyup', handleKeyUp);
+        function stopAllTimers() {
+            stopAutoMoveTimer();
+            if (speedBoostTimer) {
+                clearInterval(speedBoostTimer);
+                speedBoostTimer = null;
+            }
+            isKeyHeld = false;
+            isDrawing = false;
+        }
 
-        // 初始化游戏
-        function initGame() {
-            if (gameLoop) clearInterval(gameLoop);
+        // ========== 加速控制（优化：更平缓的加速） ==========
+        function startSpeedBoost() {
+            if (gameOver || !gameRunning || speedBoostTimer) return;
             
-            // 初始3段蛇
+            speedBoostTimer = setInterval(() => {
+                if (currentSpeed > MIN_SPEED) {
+                    currentSpeed -= SPEED_BOOST_STEP;
+                    restartAutoMoveTimer();
+                } else {
+                    clearInterval(speedBoostTimer);
+                    speedBoostTimer = null;
+                }
+            }, BOOST_DECAY_TIME);
+        }
+
+        function stopSpeedBoost() {
+            if (speedBoostTimer) {
+                clearInterval(speedBoostTimer);
+                speedBoostTimer = null;
+            }
+            // 恢复当前关卡的基础速度（更平缓）
+            const levelBaseSpeed = Math.max(MIN_SPEED, BASE_SPEED - (level - 1) * 10);
+            if (currentSpeed < levelBaseSpeed) {
+                currentSpeed = levelBaseSpeed;
+                restartAutoMoveTimer();
+            }
+        }
+
+        // ========== 方向控制（优化：防抖响应） ==========
+        function changeDirection(dir) {
+            if (gameOver || !gameRunning) return;
+
+            let directionChanged = false;
+            switch (dir) {
+                case 'up':
+                    if (dy !== 1) { dx = 0; dy = -1; directionChanged = true; }
+                    break;
+                case 'down':
+                    if (dy !== -1) { dx = 0; dy = 1; directionChanged = true; }
+                    break;
+                case 'left':
+                    if (dx !== 1) { dx = -1; dy = 0; directionChanged = true; }
+                    break;
+                case 'right':
+                    if (dx !== -1) { dx = 1; dy = 0; directionChanged = true; }
+                    break;
+            }
+
+            if (directionChanged) {
+                // 异步执行移动，避免阻塞
+                setTimeout(() => {
+                    moveSnakeStep();
+                }, 10);
+                startSpeedBoost();
+            }
+        }
+
+        // ========== 绑定虚拟按键事件（优化：触摸防抖） ==========
+        function bindControls() {
+            const controlBtns = document.querySelectorAll('.control-btn');
+            
+            controlBtns.forEach(btn => {
+                // 增加触摸防抖，避免重复触发
+                let touchTimeout = null;
+                
+                btn.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    if (isKeyHeld) return;
+                    isKeyHeld = true;
+                    const dir = btn.dataset.dir;
+                    changeDirection(dir);
+                });
+                
+                btn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    if (isKeyHeld || touchTimeout) return;
+                    touchTimeout = setTimeout(() => {
+                        isKeyHeld = true;
+                        const dir = btn.dataset.dir;
+                        changeDirection(dir);
+                        touchTimeout = null;
+                    }, 10); // 10ms防抖
+                });
+
+                // 松开事件统一处理
+                const onKeyUp = () => {
+                    isKeyHeld = false;
+                    stopSpeedBoost();
+                    if (touchTimeout) {
+                        clearTimeout(touchTimeout);
+                        touchTimeout = null;
+                    }
+                };
+
+                btn.addEventListener('mouseup', onKeyUp);
+                btn.addEventListener('mouseleave', onKeyUp);
+                btn.addEventListener('touchend', onKeyUp);
+            });
+        }
+
+        // ========== 游戏初始化 ==========
+        function initGame() {
+            gameOver = false;
+            gameRunning = true;
+            isKeyHeld = false;
+            isDrawing = false;
+            stopAllTimers();
+            
             snake = [
-                { x: 10, y: 10 },
-                { x: 9, y: 10 },
-                { x: 8, y: 10 }
+                { x: Math.floor(tileCount/2), y: Math.floor(tileCount/2) },
+                { x: Math.floor(tileCount/2)-1, y: Math.floor(tileCount/2) },
+                { x: Math.floor(tileCount/2)-2, y: Math.floor(tileCount/2) }
             ];
             
             dx = 1;
@@ -319,25 +518,24 @@
             score = 0;
             level = 1;
             target = getTargetEggs(level);
-            gameOver = false;
-            currentSpeed = baseSpeed;
-            tempSpeed = baseSpeed;
-            keyPressed = false;
+            currentSpeed = BASE_SPEED;
 
             updateStats();
             spawnFood();
             drawGame();
-            updateGameLoop();
+            startAutoMoveTimer();
         }
 
-        // 绑定按钮+页面初始化
+        // ========== 初始化 ==========
+        bindControls();
         document.getElementById('startBtn').addEventListener('click', initGame);
 
+        // 页面加载初始化
         window.onload = () => {
             snake = [
-                { x: 10, y: 10 },
-                { x: 9, y: 10 },
-                { x: 8, y: 10 }
+                { x: Math.floor(tileCount/2), y: Math.floor(tileCount/2) },
+                { x: Math.floor(tileCount/2)-1, y: Math.floor(tileCount/2) },
+                { x: Math.floor(tileCount/2)-2, y: Math.floor(tileCount/2) }
             ];
             level = 1;
             score = 0;
@@ -346,6 +544,9 @@
             spawnFood();
             drawGame();
         };
+
+        // 页面卸载时清理定时器，避免内存泄漏
+        window.addEventListener('beforeunload', stopAllTimers);
     </script>
 </body>
 </html>
